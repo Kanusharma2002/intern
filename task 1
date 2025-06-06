@@ -1,0 +1,8 @@
+# Filter rules involving 'whole milk'
+rules_involving_whole_milk = rules[
+    rules['antecedents'].apply(lambda x: 'whole milk' in x) |
+    rules['consequents'].apply(lambda x: 'whole milk' in x)
+]
+
+# Display the filtered rules, sorted by lift
+display(rules_involving_whole_milk.sort_values(by='lift', ascending=False))
