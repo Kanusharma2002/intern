@@ -1,0 +1,72 @@
+import pandas as pd
+import numpy as np
+import re
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, classification_report
+
+# Load dataset
+df = pd.read_csv('amazon_reviews.csv')
+
+# Display first few rows
+print(df.head())
+
+# Data Preprocessing
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('wordnet')
+
+def preprocess_text(text):
+    text = text.lower()
+    text = re.sub(r'[^a-zA-Z\s]', '', text)
+    tokens = word_tokenize(text)
+    lemmatizer = WordNetLemmatizer()
+    tokens = [lemmatizer.lemmatize(token) for token in tokens if token not in stopwords.words('english')]
+    return ' '.join(tokens)
+
+df['cleaned_review'] = df['reviewText'].apply(preprocess_text)
+
+# Sentiment Analysis
+vectorizer = TfidfVectorizer(max_features=5000)
+X = vectorizer.fit_transform(df['cleaned_review'])
+y = df['sentiment']  # Assuming dataset contains sentiment labels
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+model = MultinomialNB()
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+print(f'Accuracy: {accuracy_score(y_test, y_pred)}')
+print(classification_report(y_test, y_pred))
+
+# Customer Satisfaction Analysis (NPS)
+def calculate_nps(df):
+    promoters = df[df['rating'] >= 9].shape[0]
+    detractors = df[df['rating'] <= 6].shape[0]
+    total_responses = df.shape[0]
+    nps = ((promoters - detractors) / total_responses) * 100
+    return nps
+
+nps_score = calculate_nps(df)
+print(f'NPS Score: {nps_score}')
+
+# Visualization
+plt.figure(figsize=(10, 6))
+sns.countplot(x='rating', data=df)
+plt.title('Customer Ratings Distribution')
+plt.show()
+
+wordcloud = WordCloud(width=800, height=400, background_color='white').generate(' '.join(df['cleaned_review']))
+plt.figure(figsize=(10, 6))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.title('Word Cloud of Customer Feedback')
+plt.show()
